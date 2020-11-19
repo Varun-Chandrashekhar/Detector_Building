@@ -1,0 +1,110 @@
+#include <SPI.h> // Importing SPI Library
+#include <Wire.h> // Importing Wire Library
+#include <Adafruit_GFX.h> // Importing GFX Library
+#include <Adafruit_SSD1306.h> // Importing SSD1306 Library
+
+#define SCREEN_WIDTH 128 // OLED display width, in pixels
+#define SCREEN_HEIGHT 64 // OLED display height, in pixels
+
+// Declaration for an SSD1306 display connected to I2C (SDA, SCL pins)
+#define OLED_RESET     -1 // Reset pin 
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET); // Initializing Display
+
+int potPin = A1; // Variable for Potentiometer Pin
+int potVal;
+int oldPotVal;
+// range for greean led (LOW)
+float t1=32;
+float t2=75;
+// range for blue led (MEDIUM)
+float t3= 75;
+float t4= 85 ;
+// range for red led (HIGH)
+float t5=85;
+float t6=100;
+//to correct for innacuracy
+int add=5;
+//lights
+int red = 10;
+int blue = 12;
+int green = 11;
+String color;
+
+int ThermistorPin = 0;
+int Vo;
+float R1 = 10000;
+float logR2, R2, T;
+float c1 = 1.009249522e-03, c2 = 2.378405444e-04, c3 = 2.019202697e-07;
+
+void setup() {
+Serial.begin(9600);
+display.begin(SSD1306_SWITCHCAPVCC, 0x3C); // Starting Display
+}
+
+void loop() {
+  Potentiometer();
+  Display();
+  Vo = analogRead(ThermistorPin);
+  R2 = R1 * (1023.0 / (float)Vo - 1.0);
+  logR2 = log(R2);
+  T = (1.0 / (c1 + c2*logR2 + c3*logR2*logR2*logR2));
+  T = T - 273.15;
+  T = (T * 9.0)/ 5.0 + 32.0; 
+  T=T+add;
+  Serial.print("Temperature: "); 
+  Serial.print(T);
+  Serial.println(" F"); 
+
+  if(T>t1 && T<t2){
+    digitalWrite(green, HIGH);
+    digitalWrite(blue, LOW);
+    digitalWrite(red, LOW);
+    color = "green";
+   }
+   if(T>t3 && T<t4){
+    digitalWrite(green,LOW);
+    digitalWrite(blue, HIGH);
+    digitalWrite(red, LOW);
+    color = "blue";
+   }
+   if(T>t5 && T<t6){
+    digitalWrite(green,LOW);
+    digitalWrite(blue,LOW);
+    digitalWrite(red,HIGH);
+    color = "red";
+   }
+  
+  delay(100);
+}
+
+void Display() {
+  if (random(0, 250) == 50) { // Once every 1000 times
+    display.begin(SSD1306_SWITCHCAPVCC, 0x3C); // Starting Display
+  }
+  display.clearDisplay(); // Clearing Display
+  display.setTextSize(1); // Setting Text Size
+  display.setTextColor(WHITE); // Setting Text Color
+  display.setCursor(0, 10); // Setting Cursor position
+  display.print("Temprature: "); // Printing on Display
+  display.println(T); // Printing on Display
+  display.println(""); // Printing on Display
+  
+  display.print("Color: "); // Printing on Display
+  display.println(color); // Printing on Display
+  display.println(""); // Printing on Display
+  
+  display.print("Pot Adjust Temp: +"); // Printing on Display
+  display.print(add); // Printing on Display
+  display.display(); // Updating Display
+}
+
+void Potentiometer() {
+  potVal = analogRead(potPin); // Reads the "current" state of the Potentiometer
+  if (abs(oldPotVal - potVal) >= 10) { // If Potentiometer Value has changed
+    oldPotVal = potVal; // Updating Old Potentiometer Value
+    add = map(potVal, 0, 1024, 0, 5); // Mapping Values to index value
+
+
+    Display();
+  }
+}
